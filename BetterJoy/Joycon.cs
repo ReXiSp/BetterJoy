@@ -115,7 +115,7 @@ namespace BetterJoy
 
         private readonly bool _dragToggle = bool.Parse(ConfigurationManager.AppSettings["DragToggle"]);
 
-        private readonly string _extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouse"];
+        private readonly string _extraGyroFeature = ConfigurationManager.AppSettings["GyroToJoyOrMouseOrPassthru"];
         private readonly short[] _gyrNeutral = { 0, 0, 0 };
 
         private readonly short[] _gyrR = { 0, 0, 0 };
@@ -512,7 +512,7 @@ namespace BetterJoy
             }
             else
             {
-                _form.AppendTextBox("Using Bluetooth.");
+                _form.AppendTextBox("Bluetoothを使用中。");
             }
 
             var ok = DumpCalibrationData();
@@ -695,6 +695,9 @@ namespace BetterJoy
         // Run from poll thread
         private ReceiveError ReceiveRaw(byte[] buf)
         {
+           // _form.AppendTextBox("Receive!");
+
+
             if (_handle == IntPtr.Zero)
             {
                 return ReceiveError.InvalidHandle;
@@ -749,6 +752,8 @@ namespace BetterJoy
                 PacketCounter++;
                 Program.Server?.NewReportIncoming(this);
             }
+
+            //_form.AppendTextBox(this.GetAccel()[0].ToString());
 
             if (OutDs4 != null)
             {
@@ -1541,11 +1546,11 @@ namespace BetterJoy
                 };
                 _pollThreadObj.Start();
 
-                _form.AppendTextBox("Starting poll thread.");
+                _form.AppendTextBox("Pollスレッドを開始中。");
             }
             else
             {
-                _form.AppendTextBox("Poll cannot start.");
+                _form.AppendTextBox("Pollを開始できませんでした。");
             }
         }
 
@@ -1718,7 +1723,7 @@ namespace BetterJoy
                     {
                         stick1Data = new ReadOnlySpan<byte>(factoryStickData, IsLeft ? 0 : 9, 9);
 
-                        _form.AppendTextBox($"Using factory {stick1Name} stick calibration data.");
+                        _form.AppendTextBox($"ファクトリー {stick1Name} のスティックキャリブレーションデータを使用中。");
                     }
                 }
 
@@ -1746,7 +1751,7 @@ namespace BetterJoy
                         {
                             stick2Data = new ReadOnlySpan<byte>(factoryStickData, !IsLeft ? 0 : 9, 9);
 
-                            _form.AppendTextBox($"Using factory {stick2Name} stick calibration data.");
+                            _form.AppendTextBox($"ファクトリー {stick2Name} のスティックキャリブレーションデータを使用中。");
                         }
                     }
 
@@ -1782,14 +1787,14 @@ namespace BetterJoy
                 {
                     if (userSensorData[0] == 0xB2 && userSensorData[1] == 0xA1)
                     {
-                        _form.AppendTextBox($"Using user sensors calibration data.");
+                        _form.AppendTextBox($"ユーザー センサーキャリブレーションデータを使用中。");
                     }
                     else
                     {
                         var factorySensorData = ReadSPICheck(0x60, 0x20, 0x18, ref ok);
                         sensorData = new ReadOnlySpan<byte>(factorySensorData, 0, 24);
 
-                        _form.AppendTextBox($"Using factory sensors calibration data.");
+                        _form.AppendTextBox($"ファクトリー センサーキャリブレーションデータを使用中。");
                     }
                 }
 
@@ -2150,6 +2155,11 @@ namespace BetterJoy
                     output.DPad = DpadDirection.East;
                 }
 
+                if (input._extraGyroFeature == "passthru" || input._extraGyroFeature == "passthrough" || input._extraGyroFeature == "direct" || input._extraGyroFeature == "ds4gyro")
+                {
+                    output.accel = input.GetAccel();
+                    output.gyro = input.GetGyro();
+                }
                 output.Share = buttons[(int)Button.Capture];
                 output.Options = buttons[(int)Button.Plus];
                 output.Ps = buttons[(int)Button.Home];
@@ -2256,16 +2266,16 @@ namespace BetterJoy
                 if (other != null || isPro)
                 {
                     // no need for && other != this
-                    output.ThumbLeftX = CastStickValueByte(other == input && !isLeft ? -stick2[0] : -stick[0]);
-                    output.ThumbLeftY = CastStickValueByte(other == input && !isLeft ? stick2[1] : stick[1]);
-                    output.ThumbRightX = CastStickValueByte(other == input && !isLeft ? -stick[0] : -stick2[0]);
-                    output.ThumbRightY = CastStickValueByte(other == input && !isLeft ? stick[1] : stick2[1]);
+                    output.ThumbLeftX = CastStickValueByte(other == input && !isLeft ? (float)(-stick2[0] / 2.075) : (float)(-stick[0] / 2.075));
+                    output.ThumbLeftY = CastStickValueByte(other == input && !isLeft ? (float)(stick2[1] / 2.075) : (float)(stick[1] / 2.075));
+                    output.ThumbRightX = CastStickValueByte(other == input && !isLeft ? (float)(-stick[0] / 2.075) : (float)(-stick2[0] / 2.075));
+                    output.ThumbRightY = CastStickValueByte(other == input && !isLeft ? (float)(stick[1] / 2.075) : (float)(stick2[1] / 2.075));
                 }
                 else
                 {
                     // single joycon mode
-                    output.ThumbLeftY = CastStickValueByte((isLeft ? 1 : -1) * stick[0]);
-                    output.ThumbLeftX = CastStickValueByte((isLeft ? 1 : -1) * stick[1]);
+                    output.ThumbLeftY = CastStickValueByte((isLeft ? 1 : -1) * (float)(stick[0] / 2.075));
+                    output.ThumbLeftX = CastStickValueByte((isLeft ? 1 : -1) * (float)(stick[1] / 2.075));
                 }
             }
 
@@ -2293,11 +2303,11 @@ namespace BetterJoy
         {
             return type switch
             {
-                ControllerType.JoyconLeft  => "Left joycon",
-                ControllerType.JoyconRight => "Right joycon",
-                ControllerType.Pro         => "Pro controller",
-                ControllerType.SNES        => "SNES controller",
-                _                          => "Controller"
+                ControllerType.JoyconLeft  => "Joy-Con (L)",
+                ControllerType.JoyconRight => "Joy-Con (R)",
+                ControllerType.Pro         => "Pro コントローラー",
+                ControllerType.SNES        => "スーパーファミコンコントローラー",
+                _                          => "コントローラー"
             };
         }
 

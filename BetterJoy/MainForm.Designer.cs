@@ -74,7 +74,7 @@
             // 
             // notifyIcon
             // 
-            notifyIcon.BalloonTipText = "Double click the tray icon to maximise!";
+            notifyIcon.BalloonTipText = "トレイアイコンをクリックして表示します。";
             notifyIcon.BalloonTipTitle = "BetterJoy";
             notifyIcon.ContextMenuStrip = contextMenu;
             notifyIcon.Icon = (System.Drawing.Icon)resources.GetObject("notifyIcon.Icon");
@@ -99,17 +99,17 @@
             // version_lbl
             // 
             version_lbl.AutoSize = true;
-            version_lbl.Location = new System.Drawing.Point(290, 321);
+            version_lbl.Location = new System.Drawing.Point(240, 321);
             version_lbl.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             version_lbl.Name = "version_lbl";
             version_lbl.Size = new System.Drawing.Size(28, 15);
             version_lbl.TabIndex = 2;
-            version_lbl.Text = "v8.0";
+            version_lbl.Text = "v8.0-Gyro-JPN";
             // 
             // donationLink
             // 
             donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(243, 321);
+            donationLink.Location = new System.Drawing.Point(203, 321);
             donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             donationLink.Name = "donationLink";
             donationLink.Size = new System.Drawing.Size(43, 15);
@@ -135,7 +135,7 @@
             conCntrls.Size = new System.Drawing.Size(304, 120);
             conCntrls.TabIndex = 0;
             conCntrls.TabStop = false;
-            conCntrls.Text = "Connected Controllers";
+            conCntrls.Text = "接続されたコントローラー一覧";
             // 
             // loc4
             // 
@@ -144,7 +144,7 @@
             loc4.Name = "loc4";
             loc4.Size = new System.Drawing.Size(68, 23);
             loc4.TabIndex = 7;
-            loc4.Text = "Locate";
+            loc4.Text = "探す";
             loc4.UseVisualStyleBackColor = true;
             // 
             // loc3
@@ -154,7 +154,7 @@
             loc3.Name = "loc3";
             loc3.Size = new System.Drawing.Size(68, 23);
             loc3.TabIndex = 6;
-            loc3.Text = "Locate";
+            loc3.Text = "探す";
             loc3.UseVisualStyleBackColor = true;
             // 
             // loc2
@@ -164,7 +164,7 @@
             loc2.Name = "loc2";
             loc2.Size = new System.Drawing.Size(68, 23);
             loc2.TabIndex = 5;
-            loc2.Text = "Locate";
+            loc2.Text = "探す";
             loc2.UseVisualStyleBackColor = true;
             // 
             // loc1
@@ -174,7 +174,7 @@
             loc1.Name = "loc1";
             loc1.Size = new System.Drawing.Size(68, 23);
             loc1.TabIndex = 4;
-            loc1.Text = "Locate";
+            loc1.Text = "探す";
             loc1.UseVisualStyleBackColor = true;
             // 
             // con4
@@ -239,7 +239,7 @@
             foldLbl.TabIndex = 12;
             foldLbl.Text = ">";
             foldLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            btnTip.SetToolTip(foldLbl, "Config");
+            btnTip.SetToolTip(foldLbl, "設定");
             foldLbl.Click += foldLbl_Click;
             // 
             // startInTrayBox
@@ -251,7 +251,7 @@
             startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
             startInTrayBox.Size = new System.Drawing.Size(87, 19);
             startInTrayBox.TabIndex = 6;
-            startInTrayBox.Text = "Start in Tray";
+            startInTrayBox.Text = "トレイで開始";
             startInTrayBox.UseVisualStyleBackColor = true;
             startInTrayBox.CheckedChanged += startInTrayBox_CheckedChanged;
             // 
@@ -260,9 +260,9 @@
             btn_open3rdP.Location = new System.Drawing.Point(110, 135);
             btn_open3rdP.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             btn_open3rdP.Name = "btn_open3rdP";
-            btn_open3rdP.Size = new System.Drawing.Size(100, 25);
+            btn_open3rdP.Size = new System.Drawing.Size(120, 25);
             btn_open3rdP.TabIndex = 7;
-            btn_open3rdP.Text = "Add Controllers";
+            btn_open3rdP.Text = "コントローラーを追加";
             btn_open3rdP.UseVisualStyleBackColor = true;
             btn_open3rdP.Click += btn_open3rdP_Click;
             // 
@@ -335,7 +335,7 @@
             btn_reassign_open.Name = "btn_reassign_open";
             btn_reassign_open.Size = new System.Drawing.Size(88, 25);
             btn_reassign_open.TabIndex = 13;
-            btn_reassign_open.Text = "Map Buttons";
+            btn_reassign_open.Text = "ボタンマッピング";
             btn_reassign_open.UseVisualStyleBackColor = true;
             btn_reassign_open.Click += btn_reassign_open_Click;
             // 
@@ -362,7 +362,7 @@
             MaximizeBox = false;
             MinimumSize = new System.Drawing.Size(0, 376);
             Name = "MainForm";
-            Text = "BetterJoy LTS";
+            Text = "BetterJoy v8.0 Gyro-JPN-Addon";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             Resize += MainForm_Resize;

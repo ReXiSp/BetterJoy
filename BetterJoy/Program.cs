@@ -256,7 +256,7 @@ namespace BetterJoy
 
             hid_set_nonblocking(handle, 1);
 
-            _form.AppendTextBox(Joycon.GetControllerName(type) + " connected.");
+            _form.AppendTextBox(Joycon.GetControllerName(type) + "が接続されました。");
 
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
@@ -381,7 +381,7 @@ namespace BetterJoy
             Controllers.Remove(controller);
             _form.RemoveController(controller);
 
-            _form.AppendTextBox($"{controller.GetControllerName()} disconnected.");
+            _form.AppendTextBox($"{controller.GetControllerName()}が切断されました。");
         }
 
         private void OnDeviceErrored(Joycon controller)
@@ -551,7 +551,7 @@ namespace BetterJoy
             _mouse = Capture.Global.MouseAsync();
             _mouse.MouseEvent += Mouse_MouseEvent;
 
-            _form.AppendTextBox("All systems go");
+            _form.AppendTextBox("準備が整いました！");
             Mgr.Start();
             _isRunning = true;
         }
@@ -566,7 +566,7 @@ namespace BetterJoy
             var hidHideService = new HidHideControlService();
             if (!hidHideService.IsInstalled)
             {
-                _form.AppendTextBox("HIDHide is not installed.");
+                _form.AppendTextBox("HIDHideはインストールされていません。");
                 return false;
             }
 
@@ -576,7 +576,7 @@ namespace BetterJoy
             }
             catch (Exception /*e*/)
             {
-                _form.AppendTextBox("Unable to set HIDHide in whitelist mode.");
+                _form.AppendTextBox("HIDHideをホワイトリストモードに設定できませんでした。");
                 return false;
             }
 
@@ -600,7 +600,7 @@ namespace BetterJoy
             }
             catch (Exception /*e*/)
             {
-                _form.AppendTextBox("Unable to add program to whitelist.");
+                _form.AppendTextBox("プログラムをホワイトリストに追加できませんでした。");
                 return false;
             }
 
@@ -610,11 +610,11 @@ namespace BetterJoy
             }
             catch (Exception /*e*/)
             {
-                _form.AppendTextBox("Unable to hide devices.");
+                _form.AppendTextBox("デバイスを隠すのに失敗しました。");
                 return false;
             }
 
-            _form.AppendTextBox("HIDHide is enabled.");
+            _form.AppendTextBox("HIDHideは有効です。");
             return true;
         }
 
