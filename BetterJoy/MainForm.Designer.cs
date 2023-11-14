@@ -102,14 +102,14 @@
             version_lbl.Location = new System.Drawing.Point(240, 321);
             version_lbl.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             version_lbl.Name = "version_lbl";
-            version_lbl.Size = new System.Drawing.Size(28, 15);
+            version_lbl.Size = new System.Drawing.Size(83, 15);
             version_lbl.TabIndex = 2;
             version_lbl.Text = "v8.0-Gyro-JPN";
             // 
             // donationLink
             // 
             donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(203, 321);
+            donationLink.Location = new System.Drawing.Point(189, 322);
             donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             donationLink.Name = "donationLink";
             donationLink.Size = new System.Drawing.Size(43, 15);
@@ -249,7 +249,7 @@
             startInTrayBox.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             startInTrayBox.Name = "startInTrayBox";
             startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            startInTrayBox.Size = new System.Drawing.Size(87, 19);
+            startInTrayBox.Size = new System.Drawing.Size(86, 19);
             startInTrayBox.TabIndex = 6;
             startInTrayBox.Text = "トレイで開始";
             startInTrayBox.UseVisualStyleBackColor = true;
