@@ -217,7 +217,7 @@ namespace BetterJoy
             donationLink.LinkVisited = true;
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/d3xMachina/BetterJoy",
+                FileName = "https://github.com/ReXiSp/BetterJoy",
                 UseShellExecute = true
             });
         }

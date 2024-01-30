@@ -109,7 +109,7 @@
             // donationLink
             // 
             donationLink.AutoSize = true;
-            donationLink.Location = new System.Drawing.Point(189, 322);
+            donationLink.Location = new System.Drawing.Point(195, 322);
             donationLink.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             donationLink.Name = "donationLink";
             donationLink.Size = new System.Drawing.Size(43, 15);
@@ -276,7 +276,7 @@
             groupBox1.Size = new System.Drawing.Size(355, 298);
             groupBox1.TabIndex = 9;
             groupBox1.TabStop = false;
-            groupBox1.Text = "Config";
+            groupBox1.Text = "設定";
             // 
             // settingsTable
             // 
