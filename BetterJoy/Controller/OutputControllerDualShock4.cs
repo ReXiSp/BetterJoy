@@ -151,14 +151,26 @@ namespace BetterJoy.Controller
 
         private OutputControllerDualShock4InputState _currentState;
 
+        private bool _connected = false;
+
         public OutputControllerDualShock4()
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _controller = Program.EmClient.CreateDualShock4Controller();
             Init();
         }
 
         public OutputControllerDualShock4(ushort vendorId, ushort productId)
         {
+            if (Program.EmClient == null)
+            {
+                return;
+            }
+
             _controller = Program.EmClient.CreateDualShock4Controller(vendorId, productId);
             Init();
         }
@@ -167,6 +179,12 @@ namespace BetterJoy.Controller
 
         private void Init()
         {
+
+            if (_controller == null)
+            {
+                return;
+            }
+
             outDS4Report = default(DS4_REPORT_EX);
             outDS4Report.wButtons &= unchecked((ushort)~0X0F);
             outDS4Report.wButtons |= 0x08;
@@ -192,17 +210,24 @@ namespace BetterJoy.Controller
 
         public void Connect()
         {
+            if (_controller == null)
+            {
+                return;
+            }
+
             _controller.Connect();
+            _connected = true;
         }
 
         public void Disconnect()
         {
-            _controller.Disconnect();
+            _connected = false;
+            _controller?.Disconnect();
         }
 
         public bool UpdateInput(OutputControllerDualShock4InputState newState)
         {
-            if (_currentState.IsEqual(newState))
+            if (!_connected || _currentState.IsEqual(newState))
             {
                 return false;
             }

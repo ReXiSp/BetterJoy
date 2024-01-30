@@ -2,18 +2,18 @@
   <img src="title.png">
 </p>
 
-# BetterJoy v8.0 LTS
+# BetterJoy v8.4 LTS
 #### Fork changes
- - fixed a good amount of bugs, crashes, controller connection/disconnection issues.
- - added the calibration of the controller with the calibrate button (have to be enabled in the config).
- - added a deadzone setting
- - updated to .NET 7
+ - fixed a good amount of bugs, crashes, controller connection/disconnection issues
+ - added the calibration of the controller with the calibrate button
+ - added a deadzone and a range setting
+ - updated to .NET 8
  - updated hidapi and packages
  - use HidHide instead of the outdated HIDGuardian
  - instantly connect and disconnect
  - other minor improvements
 
-I only tested the changes with the pro controller as I don't have the other controllers to test.
+I only tested the changes with the official pro controller and joycons as I don't have the other controllers to test.
 
 #### Description
 
@@ -29,7 +29,7 @@ Thank you for using my software and all the constructive feedback I've been gett
 It's been quite a wild ride, with nearly **590k** (!!) official download on GitHub and probably many more through the nightlies. I think this project was responsible for both software jobs I landed so far, so I am quite proud of it.
 
 ### Screenshot
-![Example](https://github.com/d3xMachina/BetterJoy/assets/16732772/02aa978f-6b26-4d76-b910-b8fcea175a71)
+![Example](https://github.com/d3xMachina/BetterJoy/assets/16732772/2cb06404-5484-480b-a733-2db72fdf043d)
 
 # Downloads
 Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
@@ -37,8 +37,9 @@ Go to the [Releases tab](https://github.com/d3xMachina/BetterJoy/releases/)!
 # How to use
 1. Install drivers
     1. Read the READMEs (they're there for a reason!)
-    1. Run *Drivers/ViGEmBus_1.21.442_x64_x86_arm64.exe*
-    1. Restart your computer
+    2. Run *Drivers/ViGEmBus_1.22.0_x64_x86_arm64.exe*
+    3. Run *Drivers/HidHide_1.4.192_x64.exe* (optional but recommended to hide the default device)
+    4. Restart your computer
 2. Run *BetterJoy.exe*
     1. Run as Administrator if your keyboard/mouse button mappings don't work
 3. Connect your controllers.

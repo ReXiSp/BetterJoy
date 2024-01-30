@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net7.0-windows</TargetFramework>
+        <TargetFramework>net8.0-windows</TargetFramework>
         <UseWindowsForms>true</UseWindowsForms>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
@@ -62,10 +62,10 @@
         <None Include="App.config">
             <SubType>Designer</SubType>
         </None>
-        <Content Include="Drivers\ViGEmBus_1.21.442_x64_x86_arm64.exe">
+        <Content Include="Drivers\ViGEmBus_1.22.0_x64_x86_arm64.exe">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Drivers\HidHide_1.2.98_x64.exe">
+        <Content Include="Drivers\HidHide_1.4.192_x64.exe">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
@@ -157,12 +157,12 @@
         </PublishFile>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="7.0.12" />
-        <PackageReference Include="Nefarius.Drivers.HidHide" Version="1.11.0" />
+        <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.0" />
+        <PackageReference Include="Nefarius.Drivers.HidHide" Version="1.12.2" />
         <PackageReference Include="Nefarius.ViGEm.Client">
             <Version>1.21.256</Version>
         </PackageReference>
-        <PackageReference Include="System.IO.Hashing" Version="7.0.0" />
+        <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
         <PackageReference Include="WindowsInput">
             <Version>6.4.1</Version>
         </PackageReference>

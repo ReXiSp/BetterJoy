@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
@@ -13,9 +14,9 @@ using Nefarius.Drivers.HidHide;
 using Nefarius.ViGEm.Client;
 using Nefarius.ViGEm.Client.Exceptions;
 using WindowsInput;
+using WindowsInput.Events;
 using WindowsInput.Events.Sources;
 using static BetterJoy._3rdPartyControllers;
-using static BetterJoy.HIDApi;
 
 namespace BetterJoy
 {
@@ -83,18 +84,18 @@ namespace BetterJoy
                 return true;
             }
 
-            int ret = hid_init();
+            int ret = HIDApi.Init();
             if (ret != 0)
             {
                 _form.AppendTextBox("Could not initialize hidapi");
                 return false;
             }
 
-            ret = hid_hotplug_register_callback(
+            ret = HIDApi.HotplugRegisterCallback(
                 0x0,
                 0x0,
-                (int)(HotplugEvent.DeviceArrived | HotplugEvent.DeviceLeft),
-                (int)HotplugFlag.Enumerate,
+                (int)(HIDApi.HotplugEvent.DeviceArrived | HIDApi.HotplugEvent.DeviceLeft),
+                (int)HIDApi.HotplugFlag.Enumerate,
                 OnDeviceNotification,
                 _channelDeviceNotifications.Writer,
                 out _hidCallbackHandle
@@ -102,8 +103,8 @@ namespace BetterJoy
 
             if (ret != 0)
             {
-                _form.AppendTextBox(("Could not register hidapi callback"));
-                hid_exit();
+                _form.AppendTextBox("Could not register hidapi callback");
+                HIDApi.Exit();
                 return false;
             }
 
@@ -124,18 +125,18 @@ namespace BetterJoy
             return true;
         }
 
-        private static int OnDeviceNotification(int callbackHandle, HIDDeviceInfo deviceInfo, int ev, object pUserData)
+        private static int OnDeviceNotification(int callbackHandle, HIDApi.HIDDeviceInfo deviceInfo, int ev, object pUserData)
         {
             var channelWriter = (ChannelWriter<DeviceNotification>)pUserData;
-            var deviceEvent = (HotplugEvent)ev;
+            var deviceEvent = (HIDApi.HotplugEvent)ev;
 
             var notification = DeviceNotification.Type.Unknown;
             switch (deviceEvent)
             {
-                case HotplugEvent.DeviceArrived:
+                case HIDApi.HotplugEvent.DeviceArrived:
                     notification = DeviceNotification.Type.Connected;
                     break;
-                case HotplugEvent.DeviceLeft:
+                case HIDApi.HotplugEvent.DeviceLeft:
                     notification = DeviceNotification.Type.Disconnected;
                     break;
             }
@@ -153,34 +154,41 @@ namespace BetterJoy
 
             while (await channelReader.WaitToReadAsync(token))
             {
-                while (channelReader.TryRead(out var job))
+                bool read;
+                do
                 {
-                    switch (job.Notification)
+                    token.ThrowIfCancellationRequested();
+                    read = channelReader.TryRead(out var job);
+
+                    if (read)
                     {
-                        case DeviceNotification.Type.Connected:
+                        switch (job.Notification)
                         {
-                            var deviceInfos = (HIDDeviceInfo)job.Data;
-                            OnDeviceConnected(deviceInfos);
-                            break;
-                        }
-                        case DeviceNotification.Type.Disconnected:
-                        {
-                            var deviceInfos = (HIDDeviceInfo)job.Data;
-                            OnDeviceDisconnected(deviceInfos);
-                            break;
-                        }
-                        case DeviceNotification.Type.Errored:
-                        {
-                            var controller = (Joycon)job.Data;
-                            OnDeviceErrored(controller);
-                            break;
+                            case DeviceNotification.Type.Connected:
+                            {
+                                var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
+                                OnDeviceConnected(deviceInfos);
+                                break;
+                            }
+                            case DeviceNotification.Type.Disconnected:
+                            {
+                                var deviceInfos = (HIDApi.HIDDeviceInfo)job.Data;
+                                OnDeviceDisconnected(deviceInfos);
+                                break;
+                            }
+                            case DeviceNotification.Type.Errored:
+                            {
+                                var devicePath = (string)job.Data;
+                                OnDeviceErrored(devicePath);
+                                break;
+                            }
                         }
                     }
-                }
+                } while (read);
             }
         }
 
-        private void OnDeviceConnected(HIDDeviceInfo info)
+        private void OnDeviceConnected(HIDApi.HIDDeviceInfo info)
         {
             if (info.SerialNumber == null || GetControllerByPath(info.Path) != null)
             {
@@ -217,7 +225,7 @@ namespace BetterJoy
                 return;
             }
 
-            bool isUSB = info.BusType == BusType.USB;
+            bool isUSB = info.BusType == HIDApi.BusType.USB;
             var type = Joycon.ControllerType.JoyconLeft;
 
             switch (prodId)
@@ -240,7 +248,7 @@ namespace BetterJoy
 
         private void OnDeviceConnected(string path, string serial, Joycon.ControllerType type, bool isUSB, bool isThirdparty, bool reconnect = false)
         {
-            var handle = hid_open_path(path);
+            var handle = HIDApi.OpenPath(path);
             if (handle == IntPtr.Zero)
             {
                 // don't show an error message when the controller was dropped without hidapi callback notification (after standby by example)
@@ -254,14 +262,14 @@ namespace BetterJoy
                 return;
             }
 
-            hid_set_nonblocking(handle, 1);
+            HIDApi.SetNonBlocking(handle, 1);
 
             _form.AppendTextBox(Joycon.GetControllerName(type) + "が接続されました。");
 
             // Add controller to block-list for HidHide
             Program.AddDeviceToBlocklist(handle);
 
-            var indexController = Controllers.Count;
+            var indexController = GetControllerIndex();
             var controller = new Joycon(
                 _form,
                 handle,
@@ -277,21 +285,6 @@ namespace BetterJoy
             );
             controller.StateChanged += OnControllerStateChanged;
 
-            var mac = new byte[6];
-            try
-            {
-                for (var n = 0; n < 6 && n < serial.Length; n++)
-                {
-                    mac[n] = byte.Parse(serial.AsSpan(n * 2, 2), NumberStyles.HexNumber);
-                }
-            }
-            catch (Exception)
-            {
-                // could not parse mac address
-            }
-
-            controller.PadMacAddress = new PhysicalAddress(mac);
-
             // Connect device straight away
             try
             {
@@ -305,50 +298,25 @@ namespace BetterJoy
                 _form.AppendTextBox($"Could not connect {controller.GetControllerName()} ({e.Message}). Dropped.");
                 return;
             }
-
-            if (!controller.IsPro)
+            finally
             {
-                // attempt to auto join-up joycons on connection
-                foreach (var otherController in Controllers)
-                {
-                    if (otherController.IsPro || // not a joycon
-                        otherController.Other != null || // already associated
-                        controller.IsLeft == otherController.IsLeft)
-                    {
-                        continue;
-                    }
-
-                    controller.Other = otherController;
-                    otherController.Other = controller;
-                    break;
-                }
+                Controllers.Add(controller);
             }
+            
+            _form.AddController(controller);
 
-            Controllers.Add(controller);
-            if (indexController < 4)
+            // attempt to auto join-up joycons on connection
+            bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
+            if (!doNotRejoin && JoinJoycon(controller))
             {
-                _form.AddController(controller);
-            }
-
-            if (controller.Other != null)
-            {
-                controller.Other.DisconnectViGEm();
                 _form.JoinJoycon(controller, controller.Other);
             }
 
-            if (_form.AllowCalibration)
-            {
-                controller.GetActiveIMUData();
-                controller.GetActiveSticksData();
-            }
-
-            var ledOn = bool.Parse(ConfigurationManager.AppSettings["HomeLEDOn"]);
-            controller.SetHomeLight(ledOn);
-
+            controller.SetCalibration(_form.AllowCalibration);
             controller.Begin();
         }
 
-        private void OnDeviceDisconnected(HIDDeviceInfo info)
+        private void OnDeviceDisconnected(HIDApi.HIDDeviceInfo info)
         {
             var controller = GetControllerByPath(info.Path);
 
@@ -365,27 +333,39 @@ namespace BetterJoy
             controller.StateChanged -= OnControllerStateChanged;
             controller.Detach();
 
-            if (controller.Other != null)
+            var otherController = controller.Other;
+
+            if (otherController != null && otherController != controller)
             {
-                controller.Other.Other = null; // The other of the other is the joycon itself
+                otherController.Other = null; // The other of the other is the joycon itself
+                SetLEDByPadID(otherController);
+
                 try
                 {
                     controller.Other.ConnectViGEm();
                 }
                 catch (Exception)
                 {
-                    _form.AppendTextBox("Could not connect the fake controller for the unjoined joycon.");
+                    _form.AppendTextBox("Could not connect the virtual controller for the unjoined joycon.");
                 }
             }
 
-            Controllers.Remove(controller);
-            _form.RemoveController(controller);
+            if (Controllers.Remove(controller))
+            {
+                _form.RemoveController(controller);
+            }
 
             _form.AppendTextBox($"{controller.GetControllerName()}が切断されました。");
         }
 
-        private void OnDeviceErrored(Joycon controller)
+        private void OnDeviceErrored(string devicePath)
         {
+            Joycon controller = GetControllerByPath(devicePath);
+            if (controller == null)
+            {
+                return;
+            }
+
             if (controller.State > Joycon.Status.Dropped)
             {
                 // device not in error anymore (after a reset or a reconnection from the system)
@@ -409,10 +389,33 @@ namespace BetterJoy
             switch (e.State)
             {
                 case Joycon.Status.Errored:
-                    var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller);
+                    var notification = new DeviceNotification(DeviceNotification.Type.Errored, controller.Path);
                     while (!writer.TryWrite(notification)) { }
                     break;
             }
+        }
+
+        private int GetControllerIndex()
+        {
+            List<int> ids = new();
+            foreach (var controller in Controllers)
+            {
+                ids.Add(controller.PadId);
+            }
+            ids.Sort();
+
+            int freeId = 0;
+
+            foreach (var id in ids)
+            {
+                if (id != freeId)
+                {
+                    break;
+                }
+                ++freeId;
+            }
+
+            return freeId;
         }
 
         private Joycon GetControllerByPath(string path)
@@ -455,7 +458,7 @@ namespace BetterJoy
 
             if (_hidCallbackHandle != 0)
             {
-                hid_hotplug_deregister_callback(_hidCallbackHandle);
+                HIDApi.HotplugDeregisterCallback(_hidCallbackHandle);
             }
             
             await _devicesNotificationTask;
@@ -467,7 +470,7 @@ namespace BetterJoy
             {
                 controller.StateChanged -= OnControllerStateChanged;
 
-                if (powerOff)
+                if (powerOff && !controller.IsUSB)
                 {
                     controller.PowerOff();
                 }
@@ -475,13 +478,157 @@ namespace BetterJoy
                 controller.Detach();
             }
 
-            hid_exit();
+            HIDApi.Exit();
+        }
+
+        public bool JoinJoycon(Joycon controller, bool joinSelf = false)
+        {
+            if (!controller.IsJoycon || controller.Other != null)
+            {
+                return false;
+            }
+
+            if (joinSelf)
+            {
+                // hacky; implement check in Joycon.cs to account for this
+                controller.Other = controller;
+
+                return true;
+            }
+
+            foreach (var otherController in Controllers)
+            {
+                if (!otherController.IsJoycon ||
+                    otherController.Other != null || // already associated
+                    controller.IsLeft == otherController.IsLeft ||
+                    controller == otherController ||
+                    otherController.State < Joycon.Status.Attached)
+                {
+                    continue;
+                }
+
+                controller.Other = otherController;
+                otherController.Other = controller;
+
+                SetLEDByPadID(controller);
+                SetLEDByPadID(otherController);
+
+                controller.DisconnectViGEm();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool SplitJoycon(Joycon controller, bool keep = true)
+        {
+            if (!controller.IsJoycon || controller.Other == null)
+            {
+                return false;
+            }
+
+            // Reenable vigem for the joined controller
+            try
+            {
+                if (keep)
+                {
+                    controller.ConnectViGEm();
+                }
+                controller.Other.ConnectViGEm();
+            }
+            catch (Exception)
+            {
+                _form.AppendTextBox("Could not connect the virtual controller for the split joycon.");
+            }
+
+            var otherController = controller.Other;
+
+            controller.Other = null;
+            otherController.Other = null;
+
+            SetLEDByPadID(controller);
+            SetLEDByPadID(otherController);
+
+            return true;
+        }
+
+        public bool JoinOrSplitJoycon(Joycon controller)
+        {
+            bool change = false;
+
+            if (controller.Other == null)
+            {
+                int nbJoycons = Controllers.Count(j => j.IsJoycon);
+
+                // when we want to have a single joycon in vertical mode
+                bool doNotRejoin = bool.Parse(ConfigurationManager.AppSettings["DoNotRejoinJoycons"]);
+                bool joinSelf = nbJoycons == 1 || doNotRejoin;
+
+                if (JoinJoycon(controller, joinSelf))
+                {
+                    _form.JoinJoycon(controller, controller.Other);
+                    change = true;
+                }
+            }
+            else 
+            {
+                Joycon other = controller.Other;
+
+                if (SplitJoycon(controller))
+                {
+                    _form.SplitJoycon(controller, other);
+                    change = true;
+                }
+            }
+
+            return change;
+        }
+
+        public void SetLEDByPadID(Joycon controller)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.SetLEDByPadID();
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
+        }
+
+        public void SetHomeLight(Joycon controller, bool on)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.HomeLEDOn = on;
+                controller.SetHomeLight(on);
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
+        }
+
+        public void PowerOff(Joycon controller)
+        {
+            controller.HidapiLock.EnterReadLock();
+            try
+            {
+                controller.PowerOff();
+            }
+            finally
+            {
+                controller.HidapiLock.ExitReadLock();
+            }
         }
     }
 
     internal class Program
     {
-        public static PhysicalAddress BtMac = new(new byte[] { 0, 0, 0, 0, 0, 0 });
+        public static PhysicalAddress BtMac = new([0, 0, 0, 0, 0, 0]);
         public static UdpServer Server;
 
         public static ViGEmClient EmClient;
@@ -493,9 +640,6 @@ namespace BetterJoy
         public static readonly ConcurrentList<SController> ThirdpartyCons = new();
 
         private static bool _useHIDHide = bool.Parse(ConfigurationManager.AppSettings["UseHidHide"]);
-
-        private static IKeyboardEventSource _keyboard;
-        private static IMouseEventSource _mouse;
 
         private static readonly HashSet<string> BlockedDeviceInstances = new();
 
@@ -517,9 +661,18 @@ namespace BetterJoy
                 }
                 catch (VigemBusNotFoundException)
                 {
-                    _form.AppendTextBox("Could not start VigemBus. Make sure drivers are installed correctly.");
+                    _form.AppendTextBox("Could not connect to VIGEmBus. Make sure VIGEmBus driver is installed correctly.");
+                }
+                catch (VigemBusAccessFailedException)
+                {
+                    _form.AppendTextBox("Could not connect to VIGEmBus. VIGEmBus is busy. Try restarting your computer or reinstalling VIGEmBus driver.");
+                }
+                catch (VigemBusVersionMismatchException)
+                {
+                    _form.AppendTextBox("Could not connect to VIGEmBus. The installed VIGEmBus driver is not compatible. Install a newer version of VIGEmBus driver.");
                 }
             }
+
 
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
@@ -527,7 +680,7 @@ namespace BetterJoy
                 if (nic.NetworkInterfaceType != NetworkInterfaceType.FastEthernetFx &&
                     nic.NetworkInterfaceType != NetworkInterfaceType.Wireless80211)
                 {
-                    if (nic.Name.Split()[0] == "Bluetooth")
+                    if (nic.Name.Contains("Bluetooth"))
                     {
                         BtMac = nic.GetPhysicalAddress();
                     }
@@ -545,11 +698,8 @@ namespace BetterJoy
                 int.Parse(ConfigurationManager.AppSettings["Port"])
             );
 
-            // Capture keyboard + mouse events for binding's sake
-            _keyboard = Capture.Global.KeyboardAsync();
-            _keyboard.KeyEvent += Keyboard_KeyEvent;
-            _mouse = Capture.Global.MouseAsync();
-            _mouse.MouseEvent += Mouse_MouseEvent;
+            InputCapture.Global.RegisterEvent(GlobalKeyEvent);
+            InputCapture.Global.RegisterEvent(GlobalMouseEvent);
 
             _form.AppendTextBox("準備が整いました！");
             Mgr.Start();
@@ -574,7 +724,7 @@ namespace BetterJoy
             {
                 hidHideService.IsAppListInverted = false;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("HIDHideをホワイトリストモードに設定できませんでした。");
                 return false;
@@ -583,7 +733,7 @@ namespace BetterJoy
             //if (Boolean.Parse(ConfigurationManager.AppSettings["PurgeAffectedDevices"])) {
             //    try {
             //        hidHideService.ClearBlockedInstancesList();
-            //    } catch (Exception /*e*/) {
+            //    } catch (Exception) {
             //        form.AppendTextBox("Unable to purge blacklisted devices.");
             //        return false;
             //    }
@@ -598,7 +748,7 @@ namespace BetterJoy
 
                 hidHideService.AddApplicationPath(Environment.ProcessPath);
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("プログラムをホワイトリストに追加できませんでした。");
                 return false;
@@ -608,7 +758,7 @@ namespace BetterJoy
             {
                 hidHideService.IsActive = true;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("デバイスを隠すのに失敗しました。");
                 return false;
@@ -629,7 +779,7 @@ namespace BetterJoy
             {
                 var devices = new List<string>();
 
-                var instance = GetInstance(handle);
+                var instance = HIDApi.GetInstance(handle);
                 if (instance.Length == 0)
                 {
                     _form.AppendTextBox("Unable to get device instance.");
@@ -639,7 +789,7 @@ namespace BetterJoy
                     devices.Add(instance);
                 }
 
-                var parentInstance = GetParentInstance(handle);
+                var parentInstance = HIDApi.GetParentInstance(handle);
                 if (parentInstance.Length == 0)
                 {
                     _form.AppendTextBox("Unable to get device parent instance.");
@@ -672,14 +822,16 @@ namespace BetterJoy
             }
         }
 
-        private static void Mouse_MouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
+        private static void GlobalMouseEvent(object sender, EventSourceEventArgs<MouseEvent> e)
         {
-            if (e.Data.ButtonDown != null)
+            ButtonCode? button = e.Data.ButtonDown?.Button;
+
+            if (button != null)
             {
                 var resVal = Config.Value("reset_mouse");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -690,40 +842,45 @@ namespace BetterJoy
                 resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonDown.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.Controllers)
+                        foreach (var controller in Mgr.Controllers)
                         {
-                            i.ActiveGyro = true;
+                            controller.ActiveGyro = true;
                         }
                     }
                 }
+                return;
             }
 
-            if (e.Data.ButtonUp != null)
+            button = e.Data.ButtonUp?.Button;
+
+            if (button != null)
             {
                 var resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("mse_"))
                 {
-                    if ((int)e.Data.ButtonUp.Button == int.Parse(resVal.AsSpan(4)))
+                    if ((int)button == int.Parse(resVal.AsSpan(4)))
                     {
-                        foreach (var i in Mgr.Controllers)
+                        foreach (var controller in Mgr.Controllers)
                         {
-                            i.ActiveGyro = false;
+                            controller.ActiveGyro = false;
                         }
                     }
                 }
             }
         }
 
-        private static void Keyboard_KeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
+        private static void GlobalKeyEvent(object sender, EventSourceEventArgs<KeyboardEvent> e)
         {
-            if (e.Data.KeyDown != null)
+            KeyCode? key = e.Data.KeyDown?.Key;
+
+            if (key != null)
             {
                 var resVal = Config.Value("reset_mouse");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         Simulate.Events()
                                 .MoveTo(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2)
@@ -734,7 +891,7 @@ namespace BetterJoy
                 resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyDown.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         foreach (var i in Mgr.Controllers)
                         {
@@ -742,14 +899,17 @@ namespace BetterJoy
                         }
                     }
                 }
+                return;
             }
 
-            if (e.Data.KeyUp != null)
+            key = e.Data.KeyUp?.Key;
+
+            if (key != null)
             {
                 var resVal = Config.Value("active_gyro");
                 if (resVal.StartsWith("key_"))
                 {
-                    if ((int)e.Data.KeyUp.Key == int.Parse(resVal.AsSpan(4)))
+                    if ((int)key == int.Parse(resVal.AsSpan(4)))
                     {
                         foreach (var i in Mgr.Controllers)
                         {
@@ -769,14 +929,18 @@ namespace BetterJoy
 
             _isRunning = false;
 
-            StopHIDHide();
-
-            _keyboard?.Dispose();
-            _mouse?.Dispose();
             if (Mgr != null)
             {
                 await Mgr.Stop();
             }
+
+            InputCapture.Global.UnregisterEvent(GlobalKeyEvent);
+            InputCapture.Global.UnregisterEvent(GlobalMouseEvent);
+            InputCapture.Global.Dispose();
+
+            EmClient?.Dispose();
+
+            StopHIDHide();
 
             if (Server != null)
             {
@@ -803,7 +967,7 @@ namespace BetterJoy
             {
                 hidHideService.RemoveApplicationPath(Environment.ProcessPath);
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to remove program from whitelist.");
             }
@@ -817,7 +981,7 @@ namespace BetterJoy
                         hidHideService.RemoveBlockedInstanceId(instance);
                     }
                 }
-                catch (Exception /*e*/)
+                catch (Exception)
                 {
                     _form.AppendTextBox("Unable to purge blacklisted devices.");
                 }
@@ -827,7 +991,7 @@ namespace BetterJoy
             {
                 hidHideService.IsActive = false;
             }
-            catch (Exception /*e*/)
+            catch (Exception)
             {
                 _form.AppendTextBox("Unable to disable HIDHide.");
             }

@@ -15,6 +15,39 @@ namespace BetterJoy
 {
     internal class UdpServer : IDisposable
     {
+        public enum ControllerState : byte
+        {
+            Disconnected = 0x00,
+            Connected = 0x02
+        };
+
+        public enum ControllerConnection : byte
+        {
+            None = 0x00,
+            USB = 0x01,
+            Bluetooth = 0x02
+        };
+
+        public enum ControllerModel : byte
+        {
+            None = 0x00,
+            DS3 = 0x01,
+            DS4 = 0x02,
+            Generic = 0x03
+        }
+
+        public enum ControllerBattery : byte
+        {
+            Empty = 0x00,
+            Critical = 0x01,
+            Low = 0x02,
+            Medium = 0x03,
+            High = 0x04,
+            Full = 0x05,
+            Charging = 0xEE,
+            Charged = 0xEF
+        };
+
         private enum MessageType
         {
             DsucVersionReq = 0x100000,
@@ -84,13 +117,12 @@ namespace BetterJoy
         )
         {
             var size = usefulData.Length + 16;
-            using var packetDataBuffer = MemoryPool<byte>.Shared.RentCleared(size);
-            var packetDataMem = packetDataBuffer.Memory;
+            using var packetDataBuffer = ArrayPoolHelper<byte>.Shared.RentCleared(size);
 
             // needed to use span in async function
             void MakePacket()
             {
-                var packetData = packetDataMem.Span;
+                var packetData = packetDataBuffer.Span;
 
                 var currIdx = BeginPacket(packetData, reqProtocolVersion);
                 usefulData.AsSpan().CopyTo(packetData.Slice(currIdx));
@@ -101,16 +133,16 @@ namespace BetterJoy
 
             try
             {
-                await _udpSock.SendToAsync(clientEp, packetDataMem);
+                await _udpSock.SendToAsync(clientEp, packetDataBuffer.ReadOnlyMemory);
             }
-            catch (SocketException /*e*/) { }
+            catch (SocketException) { }
         }
 
         private static bool CheckIncomingValidity(Span<byte> localMsg, out int currIdx)
         {
             currIdx = 0;
 
-            if (localMsg.Length < 28)
+            if (localMsg.Length < 20)
             {
                 return false;
             }
@@ -192,7 +224,7 @@ namespace BetterJoy
                     // Requested information on gamepads - return MAC address
                     var numPadRequests = BitConverter.ToInt32(localMsg.Slice(currIdx, 4));
                     currIdx += 4;
-                    if (numPadRequests > 0)
+                    if (numPadRequests > 0 && numPadRequests + currIdx <= localMsg.Length)
                     {
                         var outputData = new byte[16];
 
@@ -219,9 +251,9 @@ namespace BetterJoy
                                 outIdx += 4;
 
                                 outputData[outIdx++] = (byte)padData.PadId;
-                                outputData[outIdx++] = (byte)padData.Constate;
-                                outputData[outIdx++] = (byte)padData.Model;
-                                outputData[outIdx++] = (byte)padData.Connection;
+                                outputData[outIdx++] = (byte)ControllerState.Connected;
+                                outputData[outIdx++] = (byte)ControllerModel.DS4;
+                                outputData[outIdx++] = (byte)(padData.IsUSB ? ControllerConnection.USB : ControllerConnection.Bluetooth);
 
                                 var addressBytes = padData.PadMacAddress.GetAddressBytes();
                                 if (addressBytes.Length == 6)
@@ -243,42 +275,43 @@ namespace BetterJoy
                                     outputData[outIdx++] = 0;
                                 }
 
-                                outputData[outIdx++] = (byte)padData.Battery;
+                                outputData[outIdx++] = (byte)GetBattery(padData);
                                 outputData[outIdx++] = 0;
 
                                 replies.Add(outputData);
                             }
                         }
                     }
-
                     break;
                 }
                 case (uint)MessageType.DsucPadDataReq:
                 {
-                    var regFlags = localMsg[currIdx++];
-                    var idToReg = localMsg[currIdx++];
-                    PhysicalAddress macToReg;
+                    if (currIdx + 8 <= localMsg.Length)
                     {
-                        var macBytes = new byte[6];
-                        localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
-
-                        macToReg = new PhysicalAddress(macBytes);
-                    }
-
-                    lock (_clients)
-                    {
-                        if (_clients.TryGetValue(clientEp, out var client))
+                        var regFlags = localMsg[currIdx++];
+                        var idToReg = localMsg[currIdx++];
+                        PhysicalAddress macToReg;
                         {
-                            client.RequestPadInfo(regFlags, idToReg, macToReg);
+                            var macBytes = new byte[6];
+                            localMsg.Slice(currIdx, macBytes.Length).CopyTo(macBytes);
+
+                            macToReg = new PhysicalAddress(macBytes);
                         }
-                        else
+
+                        lock (_clients)
                         {
-                            var clientTimes = new ClientRequestTimes();
-                            clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
-                            _clients[clientEp] = clientTimes;
+                            if (_clients.TryGetValue(clientEp, out var client))
+                            {
+                                client.RequestPadInfo(regFlags, idToReg, macToReg);
+                            }
+                            else
+                            {
+                                var clientTimes = new ClientRequestTimes();
+                                clientTimes.RequestPadInfo(regFlags, idToReg, macToReg);
+                                _clients[clientEp] = clientTimes;
+                            }
                         }
                     }
-
                     break;
                 }
             }
@@ -313,8 +346,15 @@ namespace BetterJoy
                 }
                 catch (SocketException)
                 {
-                    // We're done
-                    break;
+                    if (_running)
+                    {
+                        ResetUDPSocket();
+                    }
+                    else
+                    {
+                        // We're done
+                        break;
+                    }
                 }
             }
         }
@@ -338,7 +378,7 @@ namespace BetterJoy
             {
                 _udpSock.Bind(new IPEndPoint(ip, port));
             }
-            catch (SocketException /*e*/)
+            catch (SocketException)
             {
                 _udpSock.Close();
 
@@ -347,12 +387,6 @@ namespace BetterJoy
                 );
                 return;
             }
-
-            // Ignore ICMP
-            var iocIn = 0x80000000;
-            uint iocVendor = 0x18000000;
-            var sioUdpConnreset = iocIn | iocVendor | 12;
-            _udpSock.IOControl((int)sioUdpConnreset, new[] { Convert.ToByte(false) }, null);
 
             var randomBuf = new byte[4];
             new Random().NextBytes(randomBuf);
@@ -390,6 +424,15 @@ namespace BetterJoy
         public void Dispose()
         {
             _ctsTransfers.Dispose();
+        }
+
+        private void ResetUDPSocket()
+        {
+            const uint iocIn = 0x80000000;
+            const uint iocVendor = 0x18000000;
+            uint sioUdpConnreset = iocIn | iocVendor | 12;
+
+            _udpSock.IOControl((int)sioUdpConnreset, [Convert.ToByte(false)], null);
         }
 
         private void ReportToBuffer(Joycon hidReport, Span<byte> outputData, ref int outIdx)
@@ -512,22 +555,28 @@ namespace BetterJoy
 
             var nbClients = 0;
             var now = DateTime.UtcNow;
+            Span<IPEndPoint> relevantClients = null; 
 
             Monitor.Enter(_clients);
-            using var relevantClientsBuffer = MemoryPool<IPEndPoint>.Shared.RentCleared(_clients.Count);
-            var relevantClientsMemory = relevantClientsBuffer.Memory;
-            var relevantClients = relevantClientsMemory.Span;
 
             try
             {
+                if (_clients.Count == 0)
+                {
+                    return;
+                }
+
+                var relevantClientsBuffer = new IPEndPoint[_clients.Count];
+                relevantClients = relevantClientsBuffer.AsSpan();
+
                 foreach (var client in _clients)
                 {
                     if (!IsControllerTimedout(now, client.Value.AllPadsTime))
                     {
                         relevantClients[nbClients++] = client.Key;
                     }
-                    else if (hidReport.PadId is >= 0 and <= 3 &&
-                             !IsControllerTimedout(now, client.Value.PadIdsTime[(byte)hidReport.PadId]))
+                    else if ((hidReport.PadId >= 0 && hidReport.PadId < client.Value.PadIdsTime.Length) &&
+                             !IsControllerTimedout(now, client.Value.PadIdsTime[hidReport.PadId]))
                     {
                         relevantClients[nbClients++] = client.Key;
                     }
@@ -582,18 +631,17 @@ namespace BetterJoy
 
             relevantClients = relevantClients.Slice(0, nbClients);
 
-            using var reportBuffer = MemoryPool<byte>.Shared.RentCleared(ReportSize);
-            var reportBufferMem = reportBuffer.Memory;
-            var outputData = reportBufferMem.Span;
+            Span<byte> outputData = stackalloc byte[ReportSize];
+            outputData.Clear();
 
             var outIdx = BeginPacket(outputData);
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), (uint)MessageType.DsusPadDataRsp);
             outIdx += 4;
 
             outputData[outIdx++] = (byte)hidReport.PadId;
-            outputData[outIdx++] = (byte)hidReport.Constate;
-            outputData[outIdx++] = (byte)hidReport.Model;
-            outputData[outIdx++] = (byte)hidReport.Connection;
+            outputData[outIdx++] = (byte)ControllerState.Connected;
+            outputData[outIdx++] = (byte)ControllerModel.DS4;
+            outputData[outIdx++] = (byte)(hidReport.IsUSB ? ControllerConnection.USB : ControllerConnection.Bluetooth);
             {
                 ReadOnlySpan<byte> padMac = hidReport.PadMacAddress.GetAddressBytes();
                 foreach (var number in padMac)
@@ -602,7 +650,7 @@ namespace BetterJoy
                 }
             }
 
-            outputData[outIdx++] = (byte)hidReport.Battery;
+            outputData[outIdx++] = (byte)GetBattery(hidReport);
             outputData[outIdx++] = 1;
 
             BitConverter.TryWriteBytes(outputData.Slice(outIdx, 4), hidReport.PacketCounter);
@@ -615,6 +663,23 @@ namespace BetterJoy
             {
                 _udpSock.SendTo(outputData, client);
             }
+        }
+
+        private static ControllerBattery GetBattery(Joycon controller)
+        {
+            if (controller.Charging)
+            {
+                return ControllerBattery.Charging;
+            }
+
+            return controller.Battery switch
+            {
+                Joycon.BatteryLevel.Critical => ControllerBattery.Critical,
+                Joycon.BatteryLevel.Low => ControllerBattery.Low,
+                Joycon.BatteryLevel.Medium => ControllerBattery.Medium,
+                Joycon.BatteryLevel.Full => ControllerBattery.Full,
+                _ => ControllerBattery.Empty,
+            };
         }
 
         private static int CalculateCrc32(ReadOnlySpan<byte> data, Span<byte> crc)
@@ -634,7 +699,7 @@ namespace BetterJoy
             public ClientRequestTimes()
             {
                 AllPadsTime = DateTime.MinValue;
-                PadIdsTime = new DateTime[4];
+                PadIdsTime = new DateTime[8];
 
                 for (var i = 0; i < PadIdsTime.Length; i++)
                 {
