@@ -75,7 +75,7 @@
             // 
             // notifyIcon
             // 
-            notifyIcon.BalloonTipText = "トレイアイコンをクリックして表示します。";
+            notifyIcon.BalloonTipText = "Double click the tray icon to maximise!";
             notifyIcon.BalloonTipTitle = "BetterJoy";
             notifyIcon.ContextMenuStrip = contextMenu;
             notifyIcon.Icon = (System.Drawing.Icon)resources.GetObject("notifyIcon.Icon");
@@ -136,7 +136,7 @@
             conCntrls.Size = new System.Drawing.Size(304, 173);
             conCntrls.TabIndex = 0;
             conCntrls.TabStop = false;
-            conCntrls.Text = "接続されたコントローラー一覧";
+            conCntrls.Text = "Connected Controllers";
             // 
             // con8
             // 
@@ -261,7 +261,7 @@
             foldLbl.TabIndex = 12;
             foldLbl.Text = ">";
             foldLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            btnTip.SetToolTip(foldLbl, "設定");
+            btnTip.SetToolTip(foldLbl, "Config");
             foldLbl.Click += foldLbl_Click;
             // 
             // startInTrayBox
@@ -273,7 +273,7 @@
             startInTrayBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
             startInTrayBox.Size = new System.Drawing.Size(86, 19);
             startInTrayBox.TabIndex = 6;
-            startInTrayBox.Text = "トレイで開始";
+            startInTrayBox.Text = "Start in Tray";
             startInTrayBox.UseVisualStyleBackColor = true;
             startInTrayBox.CheckedChanged += startInTrayBox_CheckedChanged;
             // 
@@ -284,7 +284,7 @@
             btn_open3rdP.Name = "btn_open3rdP";
             btn_open3rdP.Size = new System.Drawing.Size(120, 25);
             btn_open3rdP.TabIndex = 7;
-            btn_open3rdP.Text = "コントローラーを追加";
+            btn_open3rdP.Text = "Add Controllers";
             btn_open3rdP.UseVisualStyleBackColor = true;
             btn_open3rdP.Click += btn_open3rdP_Click;
             // 
@@ -298,7 +298,7 @@
             groupBox1.Size = new System.Drawing.Size(355, 352);
             groupBox1.TabIndex = 9;
             groupBox1.TabStop = false;
-            groupBox1.Text = "設定";
+            groupBox1.Text = "Config";
             // 
             // settingsTable
             // 
@@ -398,7 +398,7 @@
             MaximizeBox = false;
             MinimumSize = new System.Drawing.Size(0, 376);
             Name = "MainForm";
-            Text = "BetterJoy v8.0 Gyro-JPN-Addon";
+            Text = "BetterJoy LTS v8.4 Gyro";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             Resize += MainForm_Resize;

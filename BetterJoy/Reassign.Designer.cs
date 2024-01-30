@@ -153,7 +153,7 @@ namespace BetterJoy {
             lbl_sl_l.Name = "lbl_sl_l";
             lbl_sl_l.Size = new Size(82, 15);
             lbl_sl_l.TabIndex = 6;
-            lbl_sl_l.Text = "SL Left Joycon";
+            lbl_sl_l.Text = "Joy-Con (L) SL";
             lbl_sl_l.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sl_l
@@ -173,7 +173,7 @@ namespace BetterJoy {
             lbl_sr_l.Name = "lbl_sr_l";
             lbl_sr_l.Size = new Size(83, 15);
             lbl_sr_l.TabIndex = 8;
-            lbl_sr_l.Text = "SR Left Joycon";
+            lbl_sr_l.Text = "Joy-Con (L) SR";
             lbl_sr_l.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sr_l
@@ -193,7 +193,7 @@ namespace BetterJoy {
             lbl_sl_r.Name = "lbl_sl_r";
             lbl_sl_r.Size = new Size(90, 15);
             lbl_sl_r.TabIndex = 10;
-            lbl_sl_r.Text = "SL Right Joycon";
+            lbl_sl_r.Text = "Joy-Con (R) SL";
             lbl_sl_r.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sl_r
@@ -213,7 +213,7 @@ namespace BetterJoy {
             lbl_sr_r.Name = "lbl_sr_r";
             lbl_sr_r.Size = new Size(91, 15);
             lbl_sr_r.TabIndex = 12;
-            lbl_sr_r.Text = "SR Right Joycon";
+            lbl_sr_r.Text = "Joy-Con (R) SR";
             lbl_sr_r.TextAlign = ContentAlignment.TopCenter;
             // 
             // btn_sr_r

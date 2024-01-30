@@ -103,7 +103,7 @@
             group_props.Size = new System.Drawing.Size(225, 66);
             group_props.TabIndex = 4;
             group_props.TabStop = false;
-            group_props.Text = "設定";
+            group_props.Text = "Settings";
             // 
             // label2
             // 
@@ -113,7 +113,7 @@
             label2.Name = "label2";
             label2.Size = new System.Drawing.Size(31, 15);
             label2.TabIndex = 1;
-            label2.Text = "タイプ";
+            label2.Text = "Type";
             // 
             // chooseType
             // 
@@ -132,7 +132,7 @@
             btn_applyAndClose.Name = "btn_applyAndClose";
             btn_applyAndClose.Size = new System.Drawing.Size(80, 27);
             btn_applyAndClose.TabIndex = 5;
-            btn_applyAndClose.Text = "閉じる";
+            btn_applyAndClose.Text = "Close";
             btn_applyAndClose.UseVisualStyleBackColor = true;
             btn_applyAndClose.Click += btn_applyAndClose_Click;
             // 
@@ -143,7 +143,7 @@
             btn_apply.Name = "btn_apply";
             btn_apply.Size = new System.Drawing.Size(80, 27);
             btn_apply.TabIndex = 6;
-            btn_apply.Text = "適用";
+            btn_apply.Text = "Apply";
             btn_apply.UseVisualStyleBackColor = true;
             btn_apply.Click += btn_apply_Click;
             // 
@@ -155,7 +155,7 @@
             lbl_all.Name = "lbl_all";
             lbl_all.Size = new System.Drawing.Size(64, 15);
             lbl_all.TabIndex = 7;
-            lbl_all.Text = "すべてのデバイス";
+            lbl_all.Text = "All Devices";
             // 
             // label1
             // 
@@ -165,7 +165,7 @@
             label1.Name = "label1";
             label1.Size = new System.Drawing.Size(103, 15);
             label1.TabIndex = 8;
-            label1.Text = "スイッチ コントローラーとして認識";
+            label1.Text = "Switch Controllers";
             // 
             // btn_refresh
             // 
@@ -174,7 +174,7 @@
             btn_refresh.Name = "btn_refresh";
             btn_refresh.Size = new System.Drawing.Size(49, 58);
             btn_refresh.TabIndex = 9;
-            btn_refresh.Text = "再読み込み";
+            btn_refresh.Text = "Re-\r\nfresh";
             btn_refresh.UseVisualStyleBackColor = true;
             btn_refresh.Click += btn_refresh_Click;
             // 
@@ -199,7 +199,7 @@
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "_3rdPartyControllers";
-            Text = "サードパーティ製のコントローラーを追加";
+            Text = "Add 3rd-Party Controllers";
             FormClosing += _3rdPartyControllers_FormClosing;
             group_props.ResumeLayout(false);
             group_props.PerformLayout();

@@ -2797,9 +2797,9 @@ namespace BetterJoy
             {
                 ControllerType.JoyconLeft  => "Joy-Con (L)",
                 ControllerType.JoyconRight => "Joy-Con (R)",
-                ControllerType.Pro         => "Pro コントローラー",
-                ControllerType.SNES        => "スーパーファミコンコントローラー",
-                _                          => "コントローラー"
+                ControllerType.Pro         => "Pro controller",
+                ControllerType.SNES        => "SNES (SFC) controller",
+                _                          => "Controller"
             };
         }
 

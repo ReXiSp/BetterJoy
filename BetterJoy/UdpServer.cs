@@ -393,7 +393,7 @@ namespace BetterJoy
             _serverId = BitConverter.ToUInt32(randomBuf, 0);
 
             _running = true;
-            _form.AppendTextBox($"サーバーを {ip}:{port} で実行中。");
+            _form.AppendTextBox($"Starting server on {ip}:{port}.");
 
             _receiveTask = Task.Run(
                 async () =>
