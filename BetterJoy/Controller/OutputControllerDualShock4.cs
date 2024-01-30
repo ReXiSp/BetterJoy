@@ -240,6 +240,11 @@ namespace BetterJoy.Controller
         private void DoUpdateInput(OutputControllerDualShock4InputState newState)
         {
 
+            if (_controller == null)
+            {
+                return;
+            }
+
             /*_controller.SetButtonState(DualShock4Button.Triangle, newState.Triangle);
             _controller.SetButtonState(DualShock4Button.Circle, newState.Circle);
             _controller.SetButtonState(DualShock4Button.Cross, newState.Cross);
